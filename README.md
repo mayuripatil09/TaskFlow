@@ -1,65 +1,225 @@
 # TaskFlow
 
-Welcome to the TaskFlow team. This small, single-user task dashboard already runs locally, but several reported behaviors and requested features need your attention. Investigate the code, explain your decisions, and make focused fixes.
+TaskFlow is a single-user task management dashboard built with FastAPI, PostgreSQL, Next.js, and TypeScript. It allows users to create, manage, search, filter, and prioritize tasks through a simple dashboard.
 
-## Stack and prerequisites
+## Tech Stack
 
-- FastAPI, SQLAlchemy 2, Pydantic 2, PostgreSQL, Alembic, and pytest
-- Next.js App Router, React, TypeScript, Tailwind CSS, and native Fetch
-- Docker and Docker Compose. Install them using the [Docker Engine guide](https://docs.docker.com/engine/install/) or [Docker Desktop guide](https://docs.docker.com/desktop/).
+**Backend**
+- Python 3.12+
+- FastAPI
+- SQLAlchemy 2
+- Pydantic 2
+- PostgreSQL
+- Alembic
+- Pytest
 
-Docker Compose is the only prerequisite for the standard path. Python 3.12+ and Node 22+ are useful for local development outside containers.
+**Frontend**
+- Next.js App Router
+- React
+- TypeScript
+- Tailwind CSS
+- Native Fetch API
 
-## Start and stop
+**Environment**
+- Docker
+- Docker Compose
 
-From the repository root:
+## Prerequisites
+
+Docker Desktop or Docker Engine with Docker Compose is required for the standard setup.
+
+- [Docker Desktop](https://docs.docker.com/desktop/)
+- [Docker Engine](https://docs.docker.com/engine/install/)
+
+Python 3.12+ and Node.js 22+ are useful for local development outside Docker.
+
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repository-url>
+cd TaskFlow
+```
+
+### 2. Configure environment variables (optional)
+
+Copy `.env.example` to `.env` if you want to customize local database credentials.
+
+The example credentials are intended only for local development.
+
+### 3. Start the application
+
+Run this command from the repository root:
 
 ```bash
 docker compose up --build
 ```
 
-Open [TaskFlow](http://localhost:3000), the [API](http://localhost:8000/health), or [API docs](http://localhost:8000/docs). The frontend sends browser requests to its own `/api` path; Next.js proxies them to the backend. The backend connects to PostgreSQL using the Compose service name `db`.
+Docker Compose starts PostgreSQL, the FastAPI backend, and the Next.js frontend.
 
-Stop with Ctrl+C, then `docker compose down`. This removes containers but retains the named database volume. `docker compose down -v` **also deletes the database volume and all task data**. The three sample tasks are inserted only when the table is empty.
+### 4. Access the application
 
-Copy `.env.example` to `.env` to customize local database credentials. The example values are for local development only.
+- **Frontend:** http://localhost:3000
+- **Backend health:** http://localhost:8000/health
+- **API documentation:** http://localhost:8000/docs
 
-## Run tests
+The frontend sends browser requests through its `/api` path, which Next.js proxies to the backend. The backend connects to PostgreSQL through the Docker Compose service named `db`.
+
+### 5. Stop the application
+
+Press `Ctrl + C`, then run:
+
+```bash
+docker compose down
+```
+
+This removes the containers but retains the named database volume.
+
+**Warning:** The following command also deletes the database volume and all stored task data:
+
+```bash
+docker compose down -v
+```
+
+The sample tasks are inserted only when the tasks table is empty.
+
+## Features Implemented
+
+- Create tasks with a title and description.
+- Assign Low, Medium, or High priority to tasks.
+- Default new tasks to Medium priority.
+- Update task status.
+- Update task priority.
+- Delete tasks.
+- Search task titles case insensitively.
+- Filter tasks by status.
+- Display dynamic dashboard summary cards for Total, To Do, In Progress, and Completed tasks.
+- Display friendly empty-state messages when no tasks match the current search or filter.
+- Display error feedback when API requests fail, with a retry option.
+- Validate task titles and prevent whitespace-only titles.
+
+## Bug Fixes and Root Causes
+
+| Reported issue | Root cause and fix |
+|---|---|
+| Whitespace-only titles could be saved | Added backend title validation and frontend validation using trimmed input. |
+| Status changes reverted after refresh | Corrected the update service to apply supplied fields, commit changes, and refresh the task from the database. |
+| Newly created tasks did not appear immediately | Reloaded the task list after successful task creation. |
+| Status filters showed incorrect tasks | Corrected the filtering logic to match the selected status. |
+| Deleting a nonexistent task appeared successful | Added a task existence check and return HTTP 404 when the task does not exist. |
+| Last-modified timestamp did not reliably change | Explicitly update `updated_at` when a task is edited. |
+
+## Additional Features and Implementation
+
+### Task Priority
+
+Added three priority levels:
+
+- Low
+- Medium
+- High
+
+Medium is the default priority for new and existing tasks.
+
+The priority feature includes:
+- SQLAlchemy model updates.
+- Pydantic API schema updates.
+- Task creation and update service changes.
+- Priority display and selection in the frontend.
+- An Alembic database migration.
+
+### Search and Filtering
+
+- Search matches task titles without case sensitivity.
+- An empty search displays all tasks.
+- Status filters work independently and can be combined with search.
+
+### Dashboard Summary
+
+The four dashboard summary cards are calculated dynamically from the current task data.
+
+### Error and Empty-State Handling
+
+The application displays helpful messages when:
+- No tasks have been created.
+- No tasks match the search or selected filter.
+- An API request fails.
+
+A retry action is available for failed data-loading requests.
+
+## Database Migrations
+
+The project uses Alembic to manage database schema changes.
+
+Apply migrations with:
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
+The task priority migration adds a non-nullable `priority` column with a default value of `medium`.
+
+## Running Tests
+
+Run the automated backend test suite:
 
 ```bash
 docker compose run --rm backend python -m pytest -q
 ```
 
-Tests use a fresh in-memory database per test and cannot modify your development data. Some regression tests intentionally fail to document reported behavior; make them pass as you repair the application.
+**Latest test result:** 7 passed.
 
-## Repository map
+The tests use a fresh in-memory database per test and do not modify the development database.
 
-- `backend/app`: API, schemas, model, and task service
-- `backend/alembic`: database migrations
-- `backend/tests`: isolated API tests
-- `frontend/app`: dashboard and styles
-- `frontend/components`: task controls
-- `frontend/lib`: browser API client
-- `docker-compose.yml`: local services and persistent database volume
+Manual verification was also performed for task creation, priority selection and updates, status persistence, search, filters, dashboard summaries, validation, and deletion.
 
-## Reported problems to investigate
+## Project Structure
+TaskFlow/
+├── backend/
+│   ├── app/
+│   │   ├── models/
+│   │   ├── routers/
+│   │   ├── schemas/
+│   │   ├── services/
+│   │   └── main.py
+│   ├── alembic/
+│   │   ├── versions/
+│   │   ├── env.py
+│   │   └── script.py.mako
+│   └── tests/
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── types/
+├── docker-compose.yml
+├── .env.example
+├── .gitignore
+└── README.md
 
-- Some titles containing only spaces can be saved.
-- A status change can look successful, then revert after a refresh.
-- A newly created task can be absent from the current list until a refresh.
-- One status filter includes tasks from another status.
-- Deleting an ID that does not exist looks successful.
-- The last-modified time does not always change when a task is edited.
+Implementation Notes and Tradeoffs
 
-## Requested features
+Docker Compose is used to provide a consistent development environment.
 
-1. Add low, medium, and high task priority, defaulting existing and new tasks to medium. Include the database migration, API fields, creation flow, and display.
-2. Make the visible search field filter titles case insensitively; an empty search shows all tasks.
-3. Calculate the four summary cards from task data.
-4. Add friendly feedback for empty filtered lists and failed API requests.
+PostgreSQL stores task data persistently through a named Docker volume.
 
-## Submission
+Alembic migrations manage database schema changes.
 
-Submit a repository or archive with your code, migrations, and tests. Include a short explanation of the root causes, changes, how you tested them, and any remaining tradeoffs. Do not include generated build output or local `.env` files.
+Frontend filtering and dashboard summaries are calculated from the task data loaded by the application.
 
-Useful references: [FastAPI](https://fastapi.tiangolo.com/), [Pydantic](https://docs.pydantic.dev/latest/), [SQLAlchemy](https://docs.sqlalchemy.org/en/20/), [Alembic](https://alembic.sqlalchemy.org/en/latest/), [Next.js](https://nextjs.org/docs), and [Docker Compose](https://docs.docker.com/compose/).
+The application is designed as a single-user task dashboard and does not currently implement multi-user authentication or authorization.
+
+Useful References
+
+FastAPI
+
+Pydantic
+
+SQLAlchemy
+
+Alembic
+
+Next.js
+
+Docker Compose
